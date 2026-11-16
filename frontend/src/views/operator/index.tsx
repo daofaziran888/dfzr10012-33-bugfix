@@ -11,12 +11,14 @@ const columns = [
   "输出流",
   "并行度",
   "算子状态",
-  "最近执行"
+  "最近执行",
+  "发布状态"
 ]
 const actions = [
   "启动算子",
   "暂停算子",
-  "下线算子"
+  "下线算子",
+  "发布算子"
 ]
 const statuses = [
   "草稿",
@@ -45,6 +47,7 @@ export default function OperatorView() {
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
+  const [noticeMessage, setNoticeMessage] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const filterFields = useMemo(() => columns.slice(0, 3), [])
 
@@ -70,6 +73,7 @@ export default function OperatorView() {
 
   async function runAction(action: string, row: Row) {
     setErrorMessage('')
+    setNoticeMessage('')
     try {
       const response = await request(`${ENDPOINT}/${row.id}/actions`, {
         method: 'POST',
@@ -78,6 +82,13 @@ export default function OperatorView() {
       if (!response.ok) {
         throw new Error('流处理算子动作未生效，请稍后重试')
       }
+      const payload = (await response.json()) as { ok: boolean; message: string }
+      if (!payload.ok) {
+        // 发布校验不通过（例如引用了已停用函数）以 ok=false 返回，原样展示原因。
+        setErrorMessage(payload.message)
+        return
+      }
+      setNoticeMessage(payload.message)
       await reload()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '流处理算子操作失败')
@@ -155,6 +166,7 @@ export default function OperatorView() {
 
       <footer className="page-foot">
         <span>共 {total} 条流处理算子记录</span>
+        {noticeMessage && <span>{noticeMessage}</span>}
         {errorMessage && <span className="error-text">{errorMessage}</span>}
       </footer>
     </section>

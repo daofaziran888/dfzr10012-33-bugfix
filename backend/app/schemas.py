@@ -22,10 +22,22 @@ class ActionResult(BaseModel):
 
 
 class EntryPayload(BaseModel):
-    """登记或修改一条业务记录时提交的字段集合。"""
+    """登记或修改一条业务记录时提交的字段集合。
+
+    `action` 允许两种写法：放在 `values.action` 里，或直接提到顶层
+    （前端页面历来是顶层提交）。`merged_values()` 会把两种写法合成一份，
+    避免动作名被静默读成空串。
+    """
 
     values: dict[str, Any] = Field(default_factory=dict)
+    action: str | None = None
     remark: str | None = None
+
+    def merged_values(self) -> dict[str, Any]:
+        merged = dict(self.values)
+        if self.action and not merged.get("action"):
+            merged["action"] = self.action
+        return merged
 
 
 
